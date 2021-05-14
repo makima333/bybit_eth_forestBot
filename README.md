@@ -1,0 +1,2 @@
+# bybit_eth_forestBot
+ランダムフォレストを使用した自動売買
