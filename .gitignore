@@ -130,3 +130,4 @@ dmypy.json
 
 # 設定情報
 settings.py
+models/
