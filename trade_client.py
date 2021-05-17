@@ -25,6 +25,9 @@ class trade_client(ccxt.bybit):
         'volume':         'int64',
         'turnover':     'float64'
     }
+    
+    def market_order(self, side, amount):
+        self.create_order(self.symbol, "market", side, amount)
 
     def send_order(self, side, amount, pos, price=None):
         result = []

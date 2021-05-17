@@ -27,7 +27,7 @@ def stop_func(bybit):
 def main():
     trade_logic = {2: 'Buy', 0: 'Sell'}
     close_logic = {tr.trade_client.posLong: 'Sell',
-                   tr.trade_client.posLong: 'Buy'}
+                   tr.trade_client.posShort: 'Buy'}
     logging.basicConfig(filename='log.txt',
                         level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(message)s',
@@ -43,8 +43,19 @@ def main():
     # クローズロジック
     if pos != bybit.posNone:
         side = close_logic[pos]
-        order_result = bybit.send_order(side, settings.amount, pos)
-        if 
+        order_result = ""
+        while order_result != 'Filled':
+            order_result = bybit.send_order(side, size, pos)
+            if order_result == 'Cancelled':
+                pass
+            elif order_result == 'New':
+                time.sleep(30)
+                pos, size = bybit.get_position()
+                if pos == bybit.posNone:
+                    bybit.cancel_all_orders(bybit.symbol)
+                    bybit.market_order(side, size)
+            else:
+                return 0
     else:
         # データ取得
         now = datetime.datetime.today()
@@ -61,6 +72,8 @@ def main():
         logging.info('機械学習の結果=%s', predict_result)
         if predict_result == 1:
             # 終了時の関数
+            bybit.cancel_all_orders(bybit.symbol)
+
             stop_func()
             return 0
 
@@ -95,6 +108,8 @@ def main():
                     return 0
                 else:
                     order_result == 'Filled'
+            else:
+                return 0
 
 
 if __name__ == '__main__':
