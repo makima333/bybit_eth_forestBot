@@ -27,7 +27,9 @@ def stop_func(bybit):
 def main():
     trade_logic = {2: 'Buy', 0: 'Sell'}
     close_logic = {tr.trade_client.posLong: 'Sell',
-                   tr.trade_client.posShort: 'Buy'}
+                   tr.trade_client.posShort: 'Buy',
+                   'Buy': 'Sell',
+                   'Sell': 'Buy'}
     logging.basicConfig(filename='log.txt',
                         level=logging.INFO,
                         format='%(asctime)s:%(levelname)s:%(message)s',
@@ -51,9 +53,11 @@ def main():
             elif order_result == 'New':
                 time.sleep(30)
                 pos, size = bybit.get_position()
-                if pos == bybit.posNone:
+                if pos != bybit.posNone:
                     bybit.cancel_all_orders(bybit.symbol)
                     bybit.market_order(side, size)
+                else:
+                    order_result = 'Filled'
             else:
                 return 0
     else:
@@ -70,6 +74,7 @@ def main():
         # 予測
         predict_result = ml_predict([ohlc.iloc[len(ohlc)-1]])
         logging.info('機械学習の結果=%s', predict_result)
+
         if predict_result == 1:
             # 終了時の関数
             bybit.cancel_all_orders(bybit.symbol)
@@ -94,8 +99,8 @@ def main():
                                  first_p, tmp_p)
                     stop_func()
                     return 0
-
             order_result = bybit.send_order(side, settings.amount, pos, tmp_p)
+
             print(order_result, tmp_p)
             if order_result == 'Cancelled':
                 pass
@@ -110,6 +115,10 @@ def main():
                     order_result == 'Filled'
             else:
                 return 0
+
+        order_result = ""
+        # close_side = close_logic[side]
+        # price = tmp_p * 0.002
 
 
 if __name__ == '__main__':

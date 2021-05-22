@@ -2,6 +2,7 @@ import ccxt
 # import datetime
 import settings
 import time
+import logging
 
 
 class trade_client(ccxt.bybit):
@@ -25,7 +26,7 @@ class trade_client(ccxt.bybit):
         'volume':         'int64',
         'turnover':     'float64'
     }
-    
+
     def market_order(self, side, amount):
         self.create_order(self.symbol, "market", side, amount)
 
@@ -48,7 +49,11 @@ class trade_client(ccxt.bybit):
             if len(result) > 0:
                 break
             if i == 9:
+                logging.info("Order Error")
                 return 'New'
+        logging.info("Created Order, price=%s, side=%s,order_result=%s",
+                     price, side,
+                     result[0]['info']['order_status'])
 
         return result[0]['info']['order_status']
 
