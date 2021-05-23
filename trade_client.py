@@ -51,7 +51,7 @@ class trade_client(ccxt.bybit):
             if i == 9:
                 logging.info("Order Error")
                 return 'New'
-        logging.info("Created Order, price=%s, side=%s,order_result=%s",
+        logging.info("Created Order, price=%s, side=%s, order_result=%s",
                      price, side,
                      result[0]['info']['order_status'])
 
