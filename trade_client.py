@@ -65,7 +65,7 @@ class trade_client(ccxt.bybit):
 
     def diff_price(self, side, first_p, tmp_p):
         '''
-        返り値が大きいほど、t+1の価格が負の方に動いている
+        返り値が小さいほど、t+1の価格が負の方に動いている
         '''
         if side == 'Buy':
             return tmp_p - first_p
@@ -86,6 +86,14 @@ class trade_client(ccxt.bybit):
                 return self.posNone, 0
         else:
             return None, 0
+
+    def get_profit(self):
+        pos_dict = self.v2_private_get_position_list({'symbol':
+                                                      self.symbol_param})
+        if pos_dict['ret_msg'] == 'OK':
+            pnl = pos_dict['result']['unrealised_pnl']
+            return float(pnl)
+        return 0
 
     def get_histricaldata(self, unixtime):
         histrical_list = []
