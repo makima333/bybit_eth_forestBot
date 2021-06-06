@@ -27,9 +27,9 @@ def get_last_trade_time():
 
 def ml_predict(row):
     path_list = [
-        '/app/models/forest_profit_4.bin',
         '/app/models/forest_profit_5.bin',
-        '/app/models/forest_profit_6.bin']
+        '/app/models/forest_profit_6.bin',
+        '/app/models/forest_profit_7.bin']
     results = []
 
     scaler = load('/app/models/std_scaler.bin')
@@ -91,7 +91,7 @@ def main():
         if profit < 0:
 
             last_trade_time = get_last_trade_time()
-            if check_exec_time(60*26, last_trade_time) == 1:
+            if check_exec_time(60*31, last_trade_time) == 1:
                 while order_result != 'Filled':
                     order_result = bybit.send_order(side, size, pos)
                     if order_result == 'Cancelled':
@@ -119,10 +119,9 @@ def main():
 
                 # 初期エントリー時との乖離を取得
                 diff_p = bybit.diff_price(side, first_p, tmp_p)
-                if diff_p < -3:
-                    # 終了時の関数
-                    logging.info('価格が乖離したため、終了します, first_p=%s, tmp_p=%s',
-                                 first_p, tmp_p)
+                logging.info('価格乖離, dff_p=%s, first_p=%s, tmp_p=%s',
+                             diff_p, first_p, tmp_p)
+                if diff_p < -5:
                     stop_func(bybit)
                     return 0
 
@@ -156,9 +155,13 @@ def main():
 
         # 予測
         results_list = ml_predict([ohlc.iloc[len(ohlc)-1]])
-        predict_result = results_list[-1]
+        if sum(results_list) > 0:
+            predict_result = 1
+        else:
+            predict_result = -1
+
         predict_results = ",".join(map(str, results_list))
-        logging.info('機械学習の結果=%s, %s', predict_result, predict_results)
+        logging.info('機械学習の結果=%s, list=%s', predict_result, predict_results)
 
         if predict_result == 0:
             # 終了時の関数
