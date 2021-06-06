@@ -68,9 +68,9 @@ class trade_client(ccxt.bybit):
         返り値が小さいほど、t+1の価格が負の方に動いている
         '''
         if side == 'Buy':
-            return tmp_p - first_p
-        elif side == 'Sell':
             return first_p - tmp_p
+        elif side == 'Sell':
+            return tmp_p - first_p
 
     def get_position(self):
         pos_dict = self.v2_private_get_position_list({'symbol':

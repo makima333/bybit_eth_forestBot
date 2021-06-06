@@ -104,7 +104,7 @@ def main():
                             bybit.market_order(side, size)
                         else:
                             order_result = 'Filled'
-                             
+
                 logging.info('損切りしました。')
             stop_func(bybit)
             return 0
@@ -128,6 +128,7 @@ def main():
 
             order_result = bybit.send_order(side, size, pos)
             if order_result == 'Cancelled':
+                tmp_p = 0
                 pass
             elif order_result == 'New' or order_result == 'PartiallyFilled':
                 time.sleep(60)
