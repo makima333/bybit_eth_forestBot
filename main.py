@@ -102,6 +102,8 @@ def main():
                         if pos != bybit.posNone:
                             bybit.cancel_all_orders(bybit.symbol)
                             bybit.market_order(side, size)
+                            stop_func(bybit)
+                            return 0
                         else:
                             order_result = 'Filled'
 
@@ -154,6 +156,7 @@ def main():
         ohlc = processing.drop_column(ohlc)
 
         # 予測
+        predict_result = 0
         results_list = ml_predict([ohlc.iloc[len(ohlc)-1]])
         if sum(results_list) > 0:
             predict_result = 1
