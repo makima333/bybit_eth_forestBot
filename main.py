@@ -25,6 +25,11 @@ def get_last_trade_time():
     return datetime.datetime.fromisoformat(order_time)
 
 
+def get_last_price():
+    df = pd.read_csv(settings.history_csv_path)
+    return df.tail(1)['price'].values[0]
+
+
 def ml_predict(row):
     path_list = [
         '/app/models/forest_profit_5.bin',
@@ -83,15 +88,25 @@ def main():
     logging.info('start, position=%s, size=%s', pos, size)
     # クローズロジック
     if pos != bybit.posNone:
-        profit = bybit.get_profit()
         side = close_logic[pos]
-
+        entry_price = float(get_last_price())
+        profit = bybit.cal_profit(pos, side, entry_price)
+        logging.info("利益率＝%s", profit/entry_price)
+        # 過去2回実行分が利益率マイナスか判定する
+        fpath = '/app/logs/log.txt'
+        end_dtime = now
+        start_dtime = end_dtime - datetime.timedelta(minutes=30)
+        log_dict = processing.get_profitrate_log(fpath)
+        log_dict = processing.fillter_datetime_dict(log_dict,
+                                                    start_dtime, end_dtime)
+        rate_cnt = len(log_dict)
+        logging.info("損切りカウント=%s", rate_cnt)
         # 損切りロジック
         order_result = ""
         if profit < 0:
 
             last_trade_time = get_last_trade_time()
-            if check_exec_time(60*31, last_trade_time) == 1:
+            if check_exec_time(60*31, last_trade_time) == 1 or rate_cnt > 4:
                 while order_result != 'Filled':
                     order_result = bybit.send_order(side, size, pos)
                     if order_result == 'Cancelled':
@@ -102,8 +117,7 @@ def main():
                         if pos != bybit.posNone:
                             bybit.cancel_all_orders(bybit.symbol)
                             bybit.market_order(side, size)
-                            stop_func(bybit)
-                            return 0
+                            break
                         else:
                             order_result = 'Filled'
 
@@ -112,39 +126,40 @@ def main():
             return 0
 
         # 利確ロジック
-        order_result = ""
-        first_p = bybit.get_price(side)
-        tmp_p = first_p
-        while order_result != 'Filled':
-            if tmp_p != first_p:
-                tmp_p = bybit.get_price(side)
+        elif profit/entry_price > 0.001:
+            order_result = ""
+            first_p = bybit.get_price(side)
+            tmp_p = first_p
+            while order_result != 'Filled':
+                if tmp_p != first_p:
+                    tmp_p = bybit.get_price(side)
 
-                # 初期エントリー時との乖離を取得
-                diff_p = bybit.diff_price(side, first_p, tmp_p)
-                logging.info('価格乖離, dff_p=%s, first_p=%s, tmp_p=%s',
-                             diff_p, first_p, tmp_p)
-                if diff_p < -5:
-                    stop_func(bybit)
-                    return 0
-
-            order_result = bybit.send_order(side, size, pos)
-            if order_result == 'Cancelled':
-                tmp_p = 0
-                pass
-            elif order_result == 'New' or order_result == 'PartiallyFilled':
-                time.sleep(60)
-                pos, size = bybit.get_position()
-                if pos != bybit.posNone:
-                    bybit.cancel_all_orders(bybit.symbol)
-                    if check_exec_time(180, start_time=now) == 1:
+                    # 初期エントリー時との乖離を取得
+                    diff_p = bybit.diff_price(side, first_p, tmp_p)
+                    logging.info('価格乖離, dff_p=%s, first_p=%s, tmp_p=%s',
+                                 diff_p, first_p, tmp_p)
+                    if diff_p > 5:
                         stop_func(bybit)
                         return 0
+
+                order_result = bybit.send_order(side, size, pos)
+                if order_result == 'Cancelled':
                     tmp_p = 0
-                    continue
+                    pass
+                elif order_result in ['New', 'PartiallyFilled']:
+                    time.sleep(60)
+                    pos, size = bybit.get_position()
+                    if pos != bybit.posNone:
+                        bybit.cancel_all_orders(bybit.symbol)
+                        if check_exec_time(180, start_time=now) == 1:
+                            stop_func(bybit)
+                            return 0
+                        tmp_p = 0
+                        continue
+                    else:
+                        order_result = 'Filled'
                 else:
-                    order_result = 'Filled'
-            else:
-                return 0
+                    return 0
     else:
         # データ取得
         time_from = now - datetime.timedelta(hours=32)
@@ -158,10 +173,12 @@ def main():
         # 予測
         predict_result = 0
         results_list = ml_predict([ohlc.iloc[len(ohlc)-1]])
-        if sum(results_list) > 0:
+        if sum(results_list) == 3:
             predict_result = 1
-        else:
+        elif sum(results_list) == -3:
             predict_result = -1
+        else:
+            predict_result = 0
 
         predict_results = ",".join(map(str, results_list))
         logging.info('機械学習の結果=%s, list=%s', predict_result, predict_results)
@@ -183,7 +200,7 @@ def main():
 
                 # 初期エントリー時との乖離を取得
                 diff_p = bybit.diff_price(side, first_p, tmp_p)
-                if diff_p < -3:
+                if diff_p > 3:
                     # 終了時の関数
                     logging.info('価格が乖離したため、終了します, first_p=%s, tmp_p=%s',
                                  first_p, tmp_p)

@@ -63,14 +63,24 @@ class trade_client(ccxt.bybit):
         elif side == 'Sell':
             return self.fetch_ticker(symbol=self.symbol)['bid']
 
+    def cal_profit(self, pos, side, entry_p):
+        entry_p = float(entry_p)
+        now_price = float(self.get_price(side))
+        if pos == self.posLong:
+            return now_price - entry_p
+
+        elif pos == self.posShort:
+            return entry_p - now_price
+        return 0
+
     def diff_price(self, side, first_p, tmp_p):
         '''
         返り値が小さいほど、t+1の価格が負の方に動いている
         '''
         if side == 'Buy':
-            return first_p - tmp_p
-        elif side == 'Sell':
             return tmp_p - first_p
+        elif side == 'Sell':
+            return first_p - tmp_p
 
     def get_position(self):
         pos_dict = self.v2_private_get_position_list({'symbol':

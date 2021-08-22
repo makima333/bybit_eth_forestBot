@@ -1,6 +1,7 @@
 import pandas_ta as ta
 import pandas as pd
 import settings
+from datetime import datetime as dt
 
 
 def AddStrategy(df):
@@ -26,3 +27,32 @@ def drop_column(df):
     df = df.fillna(method='ffill')
     # df = df.dropna()
     return df
+
+
+def get_profitrate_log(fpath):
+    """ログから利益率取得
+    """
+    result_dict = {}
+    with open(fpath, 'r', encoding='utf_8') as f:
+        lines = f.readlines()
+    for line in lines:
+        parse_line = line.split(':INFO:')
+        key = parse_line[0]
+        value = parse_line[1].replace('利益率＝', '').replace('\n', '')
+        if parse_line[1].find("利益率") >= 0:
+            result_dict[key] = value
+
+    return result_dict
+
+
+def fillter_datetime_dict(ddict, start_dtime, end_dtime):
+    """時間がキーとなっている辞書型をフィルタ
+    """
+    result_dict = dict(filter(lambda item: float(item[1]) < 0, ddict.items()))
+    result_dict = dict(filter(
+        lambda item: dt.strptime(item[0], '%Y-%m-%d %H:%M:%S') > start_dtime,
+        result_dict.items()))
+    result_dict = dict(filter(
+        lambda item: dt.strptime(item[0], '%Y-%m-%d %H:%M:%S') < end_dtime,
+        result_dict.items()))
+    return result_dict
